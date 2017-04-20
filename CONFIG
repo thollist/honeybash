@@ -1,0 +1,13 @@
+#PATHS
+DIR="/binaries/"
+LOG="/tmp/hb"
+
+#SECRETS
+SECRET_VAR="SECRETVAR"
+SECRET_VAL="SECRETVAL"
+
+#OPTIONS
+DEFAULT_BINARIES="chattr,lsattr","id", "w","who","chattr","lsattr","rm","passwd","useradd","adduser","shutdown","ps"
+AUTO_KILL="TRUE"
+FAKE="TRUE"
+COMPILE="FALSE"

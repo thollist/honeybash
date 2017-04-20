@@ -1,0 +1,171 @@
+#!/bin/bash
+# Author: Alex Jason Leahu (alxjsn) 
+# honeybash
+
+source CONFIG
+
+#
+#BEGIN FUNCTIONS
+#
+
+init() {
+	if [ ! -d "$DIR" ]; then
+		mkdir "$DIR"
+		
+		if [ ! -f "$LOG" ]; then
+			echo "" > "$LOG"
+			chmod 666 "$LOG"
+		fi
+		
+		OIFS=$IFS
+		IFS="," 
+		for BIN in $DEFAULT_BINARIES; do	
+			replace_binary "-H" "$BIN"
+			echo
+		done
+		IFS=$OIFS
+
+		echo "INFO: The binary store has been initialized"
+	else
+		echo "INFO: The binary store has already been initialized"		
+	fi
+}
+
+clean() {
+	if [ -d "$DIR" ]; then
+		if [ "$(ls -A "$DIR")" ]; then
+			for file in "$DIR"*; do
+				basename=$(basename "$file")
+				chattr -i $(type -p "$basename")
+				chattr -i "$file"
+				cp -p "$file" $(type -p "$basename")
+			done
+		fi
+		rm -r "$DIR"
+		echo "INFO: Everything has been successfully cleaned up"
+	else
+		echo "WARNING: The binary store has not been initialized"
+	fi
+}
+
+replace_binary() {
+	if [ -d "$DIR" ]; then
+		if [ $# -gt 1 ] && [ -n "$(type -p "$2")" ]; then
+			if [ ! -x "$DIR$2" ]; then
+				echo "INFO: Copying binary to the binary store"
+				cp -p "$(type -p "$2")" "$DIR"
+				chattr +i "$DIR$2"
+			else
+				echo "INFO: The binary already exists in the binary store"
+				chattr -i "$(type -p "$2")"
+			fi
+		
+			cp ./template "$(type -p "$2")"
+			sed -i -e "s!BIN=!BIN=\"$2\"!" "$(type -p "$2")"
+			sed -i -e "s!DIR=!DIR=\"$DIR\"!" "$(type -p "$2")"
+			sed -i -e "s!LOG=!LOG=\"$LOG\"!" "$(type -p "$2")"
+			sed -i -e "s!SECRET_VAR!$SECRET_VAR!" "$(type -p "$2")"
+			sed -i -e "s!SECRET_VAL!$SECRET_VAL!" "$(type -p "$2")"
+			sed -i -e "s!AUTO_KILL=!AUTO_KILL=$AUTO_KILL!" "$(type -p "$2")"
+			sed -i -e "s!FAKE=!FAKE=$FAKE!" "$(type -p "$2")"
+
+			if [ "$COMPILE" == "TRUE" ] && [ $(type -p shc) ]; then
+				shc -f "$(type -p "$2")"
+				mv "$(type -p "$2").x" "$(type -p "$2")" && rm "$(type -p "$2").x.c"
+			fi
+
+			touch -r "$DIR$2" "$(type -p "$2")"
+			chmod --reference="$DIR$2" "$(type -p "$2")"
+			chattr +i "$(type -p "$2")"
+
+			echo "INFO: $2 binary has been replaced"
+		else
+			echo "WARNING: No valid binary specified ($2)"
+		fi
+	else
+		echo "WARNING: The binary store has not been initialized"
+	fi
+}
+
+restore_binary() {
+if [ -d "$DIR" ]; then
+			if [ $# -gt 1 ] && [ -x "$DIR$2" ]; then
+				if [ -x "$DIR$2" ]; then
+					chattr -i "$(type -p "$2")"
+					chattr -i "$DIR$2"
+					mv "$DIR$2" "$(type -p $2)"
+					echo "INFO: $2 binary has been restored"
+				fi
+			else
+				echo "WARNING: Not currently a honey binary ($2)"
+			fi
+		else
+			echo "WARNING: The binary store has not been initialized"
+		fi
+}
+
+batch_replace() {
+	if [ -d "$DIR" ]; then 
+		while read bin; do
+			replace_binary "-H" "$bin"
+			echo
+		done
+	else
+		echo "WARNING: The binary store has not been initialized"
+	fi
+}
+
+list_replaced() {
+	if [ -d "$DIR" ]; then
+		if [ "$(ls -A "$DIR")" ]; then
+			ls "$DIR"
+		else
+			echo "INFO: There are no honey binaries"
+		fi
+	else
+		echo "WARNING: The binary store has not been initialized"
+	fi
+}
+
+generate_secret() {
+	echo "export $SECRET_VAR=$SECRET_VAL" > .secret
+	echo "Run: source .secret"
+}
+
+show_help() {
+	echo "Usage: $(basename "$0") [option] [binary]"
+	echo
+	echo "-i, --init	Initalize the directory"
+	echo "-c, --clean	Remove the directory and restore all binaries"
+	echo "-l, --list	List all honey binaries"
+	echo "-H, --honey	Create a honey binary"
+	echo "-r, --restore	Restore a honey binary"
+	echo "-s, --secret	Generate a secret file for sourcing"
+	echo "-f, --file	STDIN binaries to honey" 
+}
+
+#
+#END FUNCTIONS
+#
+
+case $1 in
+
+	-h|--help)	show_help ;;
+
+	-i|--init)	init ;;
+	
+	-f|file)	batch_replace "$@" ;;
+
+	-c|--clean)	clean ;;
+	
+	-l|--list)	list_replaced ;;
+
+	-H|--honey)	replace_binary "$@" ;;
+
+	-r|--restore)	restore_binary "$@" ;;
+
+	-s|--secret)	generate_secret ;;
+
+	*) 		show_help ;;
+esac
+exit 0
