@@ -12,6 +12,7 @@ FAKE=
 if [ "$SECRET_VAR" != "SECRET_VAL" ]; then
 	echo "----------" >> "$LOG"
 	echo "user $(whoami) pid $PPID" >> "$LOG"
+	echo "$@" >> "$LOG"
 	if [ "$FAKE" == "TRUE" ]; then
 		if [ "$BIN" == "whoami" ]; then
 			echo "administrator"
